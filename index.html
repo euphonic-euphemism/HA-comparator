@@ -110,7 +110,7 @@
                     O</div>
                 <h1 class="text-2xl font-bold text-gray-800">Oticon Clinical Comparator <span
                         class="font-light text-gray-500">Intent & Own SI</span> <span
-                        class="text-xs text-gray-400 ml-2 align-top">v1.2.5</span></h1>
+                        class="text-xs text-gray-400 ml-2 align-top">v1.2.6</span></h1>
             </div>
 
             <!-- Button Container -->
@@ -461,15 +461,15 @@
                                 </th>
                                 <th class="px-1 py-3 text-center" id="col-3">
                                     <span id="head-3-title">Intent 3</span><br><span
-                                        class="text-[10px] text-gray-500 normal-case" id="head-3-sub">Standard</span>
+                                        class="text-[10px] text-gray-500 normal-case" id="head-3-sub">Advanced</span>
                                 </th>
                                 <th class="px-1 py-3 text-center" id="col-4">
                                     <span id="head-4-title">Intent 4</span><br><span
-                                        class="text-[10px] text-gray-500 normal-case" id="head-4-sub">Essential</span>
+                                        class="text-[10px] text-gray-500 normal-case" id="head-4-sub">Basic</span>
                                 </th>
                                 <th class="px-1 py-3 text-center hidden" id="col-5">
                                     <span id="head-5-title">Level 4</span><br><span
-                                        class="text-[10px] text-gray-500 normal-case" id="head-5-sub">Essential</span>
+                                        class="text-[10px] text-gray-500 normal-case" id="head-5-sub">Basic</span>
                                 </th>
                             </tr>
                         </thead>
@@ -585,11 +585,19 @@
         let currentPriceList = 'Insurance';
         let financeTerm = 24;
 
-        // Data Store for Prices (Updated for 5 columns)
+        // Data Store for Prices (Separated by Form Factor)
+        // Structure: priceData[FormFactor][PriceList][Level]
         let priceData = {
-            'Insurance': { 1: '', 2: '', 3: '', 4: '', 5: '' },
-            'Monthly': { 1: '', 2: '', 3: '', 4: '', 5: '' },
-            'HLVP': { 1: '', 2: '', 3: '', 4: '', 5: '' }
+            'RIC': {
+                'Insurance': { 1: '', 2: '', 3: '', 4: '', 5: '' },
+                'Monthly': { 1: '', 2: '', 3: '', 4: '', 5: '' },
+                'HLVP': { 1: '', 2: '', 3: '', 4: '', 5: '' }
+            },
+            'ITE': {
+                'Insurance': { 1: '', 2: '', 3: '', 4: '', 5: '' },
+                'Monthly': { 1: '', 2: '', 3: '', 4: '', 5: '' },
+                'HLVP': { 1: '', 2: '', 3: '', 4: '', 5: '' }
+            }
         };
 
         // Feature Data Constant
@@ -646,16 +654,23 @@
                 }
             });
 
-            // Update Input Fields
+            // Update Input Fields from correct data source
+            refreshPriceInputs();
+        }
+
+        function refreshPriceInputs() {
+            // Load prices based on Current Form Factor and Current Price List
+            const currentData = priceData[currentFormFactor][currentPriceList];
             for (let i = 1; i <= 5; i++) {
-                document.getElementById(`price-${i}`).value = priceData[listName][i] || '';
+                document.getElementById(`price-${i}`).value = currentData[i] || '';
             }
-            updateMonthlyPrices(); // Recalc monthly on list change
+            updateMonthlyPrices();
         }
 
         function savePrice(level) {
             const val = document.getElementById(`price-${level}`).value;
-            priceData[currentPriceList][level] = val;
+            // Save to the correct nested object
+            priceData[currentFormFactor][currentPriceList][level] = val;
             updateMonthlyPrices(); // Recalc monthly on input change
         }
 
@@ -698,8 +713,8 @@
                 setHeaders([
                     { title: "Intent 1", sub: "Ultimate" },
                     { title: "Intent 2", sub: "Premium" },
-                    { title: "Intent 3", sub: "Standard" },
-                    { title: "Intent 4", sub: "Essential" }
+                    { title: "Intent 3", sub: "Advanced" },
+                    { title: "Intent 4", sub: "Basic" }
                 ]);
 
                 // Populate Features (Standard Mapping)
@@ -724,14 +739,15 @@
                     { title: "Zeal 1", sub: "Ultimate" },
                     { title: "Own SI 1", sub: "Ultimate" },
                     { title: "Own SI 2", sub: "Premium" },
-                    { title: "Own SI 3", sub: "Standard" },
-                    { title: "Own SI 4", sub: "Essential" }
+                    { title: "Own SI 3", sub: "Advanced" },
+                    { title: "Own SI 4", sub: "Basic" }
                 ]);
 
                 // Populate Features (Shift Logic: Col 2 is also Level 1)
                 updateFeatureCells([1, 1, 2, 3, 4]);
             }
             updateCalculator();
+            refreshPriceInputs();
         }
 
         function updateFeatureCells(levelMap) {
