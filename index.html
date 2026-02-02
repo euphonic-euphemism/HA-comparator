@@ -1,0 +1,1363 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oticon Intent™ & Own SI Clinical Comparator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        .slider-thumb::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #ff007b;
+            /* Oticon Pinkish Red */
+            cursor: pointer;
+            border-radius: 50%;
+        }
+
+        .oticon-pink {
+            color: #ff007b;
+        }
+
+        .bg-oticon-pink {
+            background-color: #ff007b;
+        }
+
+        .card {
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .tier-card.active {
+            border: 3px solid #ff007b;
+            background-color: #fff0f7;
+        }
+
+        .feature-check {
+            color: #10b981;
+        }
+
+        .feature-cross {
+            color: #ef4444;
+        }
+
+        .feature-partial {
+            color: #f59e0b;
+        }
+
+        /* Print Layout Styles */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+
+            #print-area,
+            #print-area * {
+                visibility: visible;
+            }
+
+            #print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                background: white;
+                padding: 40px;
+            }
+
+            @page {
+                margin: 0;
+                size: auto;
+            }
+        }
+    </style>
+</head>
+
+<body class="text-gray-800">
+
+    <!-- Header -->
+    <header class="bg-white shadow-md p-4 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div
+                    class="w-10 h-10 bg-oticon-pink rounded-full flex items-center justify-center text-white font-bold text-xl">
+                    O</div>
+                <h1 class="text-2xl font-bold text-gray-800">Oticon Clinical Comparator <span
+                        class="font-light text-gray-500">Intent & Own SI</span> <span
+                        class="text-xs text-gray-400 ml-2 align-top">v1.2.0</span></h1>
+            </div>
+
+            <!-- Button Container -->
+            <div class="flex gap-2">
+                <button onclick="exportToPDF()"
+                    class="px-3 py-1 bg-oticon-pink hover:bg-pink-600 text-white rounded text-sm font-semibold flex items-center gap-2 transition-colors shadow-sm">
+                    <i class="fas fa-file-pdf"></i> Export Report
+                </button>
+                <div class="w-px h-6 bg-gray-300 mx-1"></div>
+                <button onclick="saveToFile()"
+                    class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm font-semibold text-gray-700 flex items-center gap-2 transition-colors">
+                    <i class="fas fa-save"></i> Save
+                </button>
+                <input type="file" id="file-input" class="hidden" onchange="loadFromFile(this)" accept=".json">
+                <button onclick="document.getElementById('file-input').click()"
+                    class="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm font-semibold text-gray-700 flex items-center gap-2 transition-colors">
+                    <i class="fas fa-folder-open"></i> Open
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+        <!-- Left Column: Inputs -->
+        <div class="lg:col-span-5 space-y-6">
+
+            <!-- Patient Profile Section -->
+            <div class="bg-white rounded-xl shadow-sm p-6 border-l-4 border-gray-400">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold flex items-center gap-2 m-0">
+                        <i class="fas fa-user-md text-oticon-pink"></i> Patient Profile
+                    </h2>
+                </div>
+
+                <!-- Patient Name & Date Inputs -->
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1">Patient Name</label>
+                        <input type="text" id="patient-name"
+                            class="w-full p-2 border rounded text-sm focus:ring-oticon-pink focus:border-oticon-pink outline-none"
+                            placeholder="Enter Name">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-1">Date</label>
+                        <input type="date" id="patient-date"
+                            class="w-full p-2 border rounded text-sm focus:ring-oticon-pink focus:border-oticon-pink outline-none">
+                    </div>
+                </div>
+
+                <!-- Clinical Notes Section -->
+                <div class="mb-6">
+                    <label class="block text-xs font-bold text-gray-500 mb-1">Clinical Notes</label>
+                    <textarea id="patient-notes"
+                        class="w-full p-2 border rounded text-sm focus:ring-oticon-pink focus:border-oticon-pink outline-none h-24 resize-none"
+                        placeholder="Enter clinical notes here..."></textarea>
+                </div>
+
+                <!-- Form Factor Toggle -->
+                <div class="mb-6">
+                    <label class="font-semibold block mb-2 text-sm text-gray-600">Preferred Form Factor</label>
+                    <div class="flex bg-gray-100 p-1 rounded-lg">
+                        <button id="btn-ric" onclick="setFormFactor('RIC')"
+                            class="flex-1 py-2 px-4 rounded-md bg-white shadow-sm font-bold text-oticon-pink transition-all">miniRITE
+                            R/BTE R (Intent)</button>
+                        <button id="btn-ite" onclick="setFormFactor('ITE')"
+                            class="flex-1 py-2 px-4 rounded-md text-gray-500 font-medium hover:bg-gray-200 transition-all">Custom
+                            (Own SI)</button>
+                    </div>
+                </div>
+
+                <!-- Tinnitus Severity Slider -->
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <label class="font-semibold flex items-center gap-2"><i
+                                class="fas fa-wave-square text-blue-500"></i> Tinnitus Severity</label>
+                        <span id="val-tinnitus" class="text-blue-600 font-bold">0/10</span>
+                    </div>
+                    <input type="range" min="0" max="10" value="0" step="1"
+                        class="w-full h-2 bg-blue-100 rounded-lg appearance-none cursor-pointer slider-thumb"
+                        style="accent-color: #3b82f6;" id="input-tinnitus" oninput="updateCalculator()">
+                    <p class="text-xs text-gray-400 mt-1">Scores > 5 trigger Tinnitus SoundSupport™ recommendations.</p>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm p-6">
+                <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                    <i class="fas fa-sliders-h text-oticon-pink"></i> Lifestyle Audit
+                </h2>
+                <p class="text-sm text-gray-500 mb-6">Adjust sliders based on days per week in these environments (0-7).
+                </p>
+
+                <!-- Environment Sliders -->
+                <div class="space-y-6">
+                    <!-- Complex Environments (High Weight) -->
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <label class="font-semibold flex items-center gap-2"><i
+                                    class="fas fa-utensils text-gray-400"></i> Restaurants / Crowds</label>
+                            <span id="val-complex" class="text-oticon-pink font-bold">0 days/week</span>
+                        </div>
+                        <input type="range" min="0" max="7" value="0" step="1"
+                            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb"
+                            id="input-complex" oninput="updateCalculator()">
+                        <p class="text-xs text-gray-400 mt-1">Requires rapid noise suppression & speech separation.</p>
+                    </div>
+
+                    <!-- Dynamic Environments (Med-High Weight) -->
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <label class="font-semibold flex items-center gap-2"><i
+                                    class="fas fa-users text-gray-400"></i> Small Groups / Meetings</label>
+                            <span id="val-group" class="text-oticon-pink font-bold">0 days/week</span>
+                        </div>
+                        <input type="range" min="0" max="7" value="0" step="1"
+                            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb"
+                            id="input-group" oninput="updateCalculator()">
+                        <p class="text-xs text-gray-400 mt-1">Requires spatial balancing to switch speakers.</p>
+                    </div>
+
+                    <!-- Physical/Active (Motion Weight) -->
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <label class="font-semibold flex items-center gap-2"><i
+                                    class="fas fa-walking text-gray-400"></i> Active / Outdoors / Walking</label>
+                            <span id="val-active" class="text-oticon-pink font-bold">0 days/week</span>
+                        </div>
+                        <input type="range" min="0" max="7" value="0" step="1"
+                            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb"
+                            id="input-active" oninput="updateCalculator()">
+                        <p class="text-xs text-gray-400 mt-1" id="motion-desc">Triggers 4D Motion Sensors (Body
+                            movement).</p>
+                    </div>
+
+                    <!-- Media/Quiet (Low Weight) -->
+                    <div>
+                        <div class="flex justify-between mb-1">
+                            <label class="font-semibold flex items-center gap-2"><i class="fas fa-tv text-gray-400"></i>
+                                TV / Quiet One-on-One</label>
+                            <span id="val-quiet" class="text-oticon-pink font-bold">0 days/week</span>
+                        </div>
+                        <input type="range" min="0" max="7" value="0" step="1"
+                            class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb"
+                            id="input-quiet" oninput="updateCalculator()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Score Visualization -->
+            <div class="bg-white rounded-xl shadow-sm p-6 text-center">
+                <h3 class="text-gray-500 font-semibold mb-2">Acoustic Complexity Score</h3>
+                <div class="relative pt-1">
+                    <div class="overflow-hidden h-4 mb-4 text-xs flex rounded bg-gray-200">
+                        <div id="score-bar" style="width:0%"
+                            class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-oticon-pink transition-all duration-500">
+                        </div>
+                    </div>
+                    <div class="text-5xl font-bold text-gray-800" id="score-display">0/100</div>
+                    <p class="text-sm text-gray-500 mt-2" id="score-desc">Start adjusting sliders to see needs.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Recommendation -->
+        <div class="lg:col-span-7 space-y-6">
+
+            <!-- Recommendation Box & Manual Compare Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Clinical Recommendation -->
+                <div class="bg-gradient-to-br from-gray-900 to-gray-800 rounded-xl shadow-lg p-6 text-white relative overflow-hidden transition-all duration-500"
+                    id="rec-box">
+                    <div class="absolute top-0 right-0 p-4 opacity-10">
+                        <i class="fas fa-brain text-9xl"></i>
+                    </div>
+                    <h3 class="text-gray-400 uppercase tracking-wider text-sm font-semibold">Clinical Recommendation
+                    </h3>
+                    <div class="mt-2 flex items-baseline gap-4">
+                        <h2 class="text-3xl font-bold text-white" id="rec-title">Oticon Intent™ ...</h2>
+                        <span class="px-2 py-1 bg-oticon-pink rounded-full text-xs font-bold"
+                            id="rec-badge">Calculating</span>
+                    </div>
+                    <p class="mt-4 text-gray-300 text-sm leading-relaxed" id="rec-text">
+                        Adjust the lifestyle sliders on the left to generate a personalized technology recommendation.
+                    </p>
+
+                    <!-- Tinnitus Alert Box -->
+                    <div class="mt-4 bg-blue-900/50 rounded-lg p-3 border-l-4 border-blue-400 hidden" id="tinnitus-box">
+                        <h4 class="font-bold text-blue-100 text-sm mb-1"><i class="fas fa-info-circle mr-2"></i>Tinnitus
+                            Management</h4>
+                        <p class="text-xs text-blue-200">
+                            High tinnitus severity indicates a need for <strong>Tinnitus SoundSupport™</strong>.
+                        </p>
+                    </div>
+
+                    <!-- The "Gap Analysis" / Warning -->
+                    <div class="mt-4 bg-white/10 rounded-lg p-3 border-l-4 border-oticon-pink hidden"
+                        id="gap-analysis-box">
+                        <h4 class="font-bold text-white text-sm mb-1"><i
+                                class="fas fa-exclamation-triangle text-yellow-400 mr-2"></i>Risk of Downgrading</h4>
+                        <p class="text-xs text-gray-300" id="gap-text"></p>
+                    </div>
+                </div>
+
+                <!-- Manual Comparison Panel -->
+                <div class="bg-white rounded-xl shadow-lg p-6 relative">
+                    <h3 class="text-gray-500 uppercase tracking-wider text-sm font-semibold mb-2">Compare Model
+                    </h3>
+                    <select id="select-manual-model"
+                        class="w-full p-2 border rounded-md font-bold text-gray-700 bg-gray-50 mb-4 focus:ring-2 focus:ring-blue-500 outline-none"
+                        onchange="updateComparison()">
+                        <option value="">Select model to compare...</option>
+                    </select>
+
+                    <div id="comparison-result" class="hidden">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-bold text-lg text-gray-800" id="comp-title">Vs. Intent 3</span>
+                            <span class="px-2 py-0.5 rounded text-xs font-bold bg-yellow-100 text-yellow-800"
+                                id="comp-badge">Downgrade</span>
+                        </div>
+                        <ul class="text-sm space-y-2 text-gray-600" id="comp-list">
+                            <!-- Populated by JS -->
+                            <li><i class="fas fa-arrow-down text-red-500 mr-2"></i>Loses 4dB Noise Suppression</li>
+                            <li><i class="fas fa-arrow-down text-red-500 mr-2"></i>Loses 4D Sensor Tech</li>
+                        </ul>
+                    </div>
+                    <div id="comparison-placeholder" class="text-center text-gray-400 py-8 text-sm">
+                        Select a model above to see specific feature differences.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comparison Matrix -->
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div class="p-4 border-b bg-gray-50">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-gray-700" id="matrix-title">Technology Matrix (Intent)</h3>
+                        <span class="text-xs text-gray-400">*Based on Technical Data Sheet 272194US</span>
+                    </div>
+
+                    <!-- Price List & Term Toggle -->
+                    <div class="flex justify-between items-center mb-2">
+                        <div class="flex bg-gray-200 p-1 rounded-lg text-xs font-semibold">
+                            <button onclick="setPriceList('Insurance')" id="btn-insurance"
+                                class="px-3 py-1 rounded shadow bg-white text-gray-800 transition-all">Insurance</button>
+                            <button onclick="setPriceList('Monthly')" id="btn-monthly"
+                                class="px-3 py-1 rounded text-gray-500 hover:bg-gray-300 transition-all">Monthly
+                                Promo</button>
+                            <button onclick="setPriceList('HLVP')" id="btn-hlvp"
+                                class="px-3 py-1 rounded text-gray-500 hover:bg-gray-300 transition-all">HLVP</button>
+                        </div>
+
+                        <!-- Financing Term Toggle -->
+                        <div class="flex bg-gray-200 p-1 rounded-lg text-xs font-semibold ml-4">
+                            <button onclick="setFinanceTerm(24)" id="btn-24mo"
+                                class="px-3 py-1 rounded shadow bg-white text-gray-800 transition-all">24
+                                Months</button>
+                            <button onclick="setFinanceTerm(36)" id="btn-36mo"
+                                class="px-3 py-1 rounded text-gray-500 hover:bg-gray-300 transition-all">36
+                                Months</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left table-fixed">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                            <!-- Price Input Row -->
+                            <tr>
+                                <th
+                                    class="w-24 px-1 py-2 bg-gray-50 text-right text-xs font-bold text-gray-500 align-middle">
+                                    Price/Pair:</th>
+                                <!-- Col 1 -->
+                                <th class="px-1 py-1 bg-gray-100 border-b-4 border-oticon-pink">
+                                    <div class="flex items-center justify-center">
+                                        <span class="text-gray-500 mr-1">$</span>
+                                        <input type="number" id="price-1" oninput="savePrice(1)"
+                                            class="w-full text-center text-sm p-1 border rounded focus:ring-oticon-pink focus:border-oticon-pink transition-all" />
+                                    </div>
+                                </th>
+                                <!-- Col 2 -->
+                                <th class="px-1 py-1">
+                                    <div class="flex items-center justify-center">
+                                        <span class="text-gray-500 mr-1">$</span>
+                                        <input type="number" id="price-2" oninput="savePrice(2)"
+                                            class="w-full text-center text-sm p-1 border rounded focus:ring-blue-500 focus:border-blue-500 transition-all" />
+                                    </div>
+                                </th>
+                                <!-- Col 3 -->
+                                <th class="px-1 py-1">
+                                    <div class="flex items-center justify-center">
+                                        <span class="text-gray-500 mr-1">$</span>
+                                        <input type="number" id="price-3" oninput="savePrice(3)"
+                                            class="w-full text-center text-sm p-1 border rounded focus:ring-blue-500 focus:border-blue-500 transition-all" />
+                                    </div>
+                                </th>
+                                <!-- Col 4 -->
+                                <th class="px-1 py-1">
+                                    <div class="flex items-center justify-center">
+                                        <span class="text-gray-500 mr-1">$</span>
+                                        <input type="number" id="price-4" oninput="savePrice(4)"
+                                            class="w-full text-center text-sm p-1 border rounded focus:ring-blue-500 focus:border-blue-500 transition-all" />
+                                    </div>
+                                </th>
+                                <!-- Col 5 (New) -->
+                                <th class="px-1 py-1 hidden" id="price-cell-5">
+                                    <div class="flex items-center justify-center">
+                                        <span class="text-gray-500 mr-1">$</span>
+                                        <input type="number" id="price-5" oninput="savePrice(5)"
+                                            class="w-full text-center text-sm p-1 border rounded focus:ring-blue-500 focus:border-blue-500 transition-all" />
+                                    </div>
+                                </th>
+                            </tr>
+                            <!-- MONTHLY PRICE ROW -->
+                            <tr>
+                                <th class="px-2 py-2 bg-gray-50 text-right text-xs font-bold text-gray-500 align-middle"
+                                    id="monthly-label">Price/Mo:</th>
+                                <th class="px-1 py-1 bg-gray-100 border-b-4 border-oticon-pink text-center"
+                                    id="monthly-cell-1">
+                                    <div class="text-xs text-gray-600 font-bold" id="monthly-container-1">$<span
+                                            id="monthly-1">0</span></div>
+                                </th>
+                                <th class="px-1 py-1 text-center" id="monthly-cell-2">
+                                    <div class="text-xs text-gray-600" id="monthly-container-2">$<span
+                                            id="monthly-2">0</span></div>
+                                </th>
+                                <th class="px-1 py-1 text-center" id="monthly-cell-3">
+                                    <div class="text-xs text-gray-600" id="monthly-container-3">$<span
+                                            id="monthly-3">0</span></div>
+                                </th>
+                                <th class="px-1 py-1 text-center" id="monthly-cell-4">
+                                    <div class="text-xs text-gray-600" id="monthly-container-4">$<span
+                                            id="monthly-4">0</span></div>
+                                </th>
+                                <th class="px-1 py-1 text-center hidden" id="monthly-cell-5">
+                                    <div class="text-xs text-gray-600" id="monthly-container-5">$<span
+                                            id="monthly-5">0</span></div>
+                                </th>
+                            </tr>
+                            <tr>
+                                <th class="px-2 py-3">Feature</th>
+                                <th class="px-1 py-3 text-center bg-gray-100 border-b-4 border-oticon-pink" id="col-1">
+                                    <span id="head-1-title">Level 1</span><br><span
+                                        class="text-[10px] text-gray-500 normal-case" id="head-1-sub">Premium</span>
+                                </th>
+                                <th class="px-1 py-3 text-center" id="col-2">
+                                    <span id="head-2-title">Level 2</span><br><span
+                                        class="text-[10px] text-gray-500 normal-case" id="head-2-sub">Advanced</span>
+                                </th>
+                                <th class="px-1 py-3 text-center" id="col-3">
+                                    <span id="head-3-title">Level 3</span><br><span
+                                        class="text-[10px] text-gray-500 normal-case" id="head-3-sub">Standard</span>
+                                </th>
+                                <th class="px-1 py-3 text-center" id="col-4">
+                                    <span id="head-4-title">Level 4</span><br><span
+                                        class="text-[10px] text-gray-500 normal-case" id="head-4-sub">Essential</span>
+                                </th>
+                                <th class="px-1 py-3 text-center hidden" id="col-5">
+                                    <span id="head-5-title">Level 4</span><br><span
+                                        class="text-[10px] text-gray-500 normal-case" id="head-5-sub">Essential</span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Bluetooth Row -->
+                            <tr class="border-b" id="row-bt">
+                                <td class="px-2 py-3 font-medium text-gray-900 text-xs">
+                                    Bluetooth Streaming <span
+                                        class="text-[10px] text-gray-400 block font-normal">Hands-free
+                                        calls/Audio</span>
+                                </td>
+                                <td class="px-1 py-3 text-center text-xs font-bold bg-gray-50" id="feat-bt-1"><i
+                                        class="fas fa-check-circle text-green-600"></i> Yes</td>
+                                <td class="px-1 py-3 text-center text-xs" id="feat-bt-2"><i
+                                        class="fas fa-check-circle text-green-600"></i> Yes</td>
+                                <td class="px-1 py-3 text-center text-xs" id="feat-bt-3"><i
+                                        class="fas fa-check-circle text-green-600"></i> Yes</td>
+                                <td class="px-1 py-3 text-center text-xs" id="feat-bt-4"><i
+                                        class="fas fa-check-circle text-green-600"></i> Yes</td>
+                                <td class="px-1 py-3 text-center text-xs hidden" id="feat-bt-5"><i
+                                        class="fas fa-check-circle text-green-600"></i> Yes</td>
+                            </tr>
+                            <!-- Rechargeability Row -->
+                            <tr class="border-b" id="row-rech">
+                                <td class="px-2 py-3 font-medium text-gray-900 text-xs">
+                                    Rechargeability <span
+                                        class="text-[10px] text-gray-400 block font-normal">Lithium-ion</span>
+                                </td>
+                                <td class="px-1 py-3 text-center text-xs font-bold bg-gray-50" id="feat-rech-1"><i
+                                        class="fas fa-check-circle text-green-600"></i> Yes</td>
+                                <td class="px-1 py-3 text-center text-xs" id="feat-rech-2"><i
+                                        class="fas fa-check-circle text-green-600"></i> Yes</td>
+                                <td class="px-1 py-3 text-center text-xs" id="feat-rech-3"><i
+                                        class="fas fa-check-circle text-green-600"></i> Yes</td>
+                                <td class="px-1 py-3 text-center text-xs" id="feat-rech-4"><i
+                                        class="fas fa-check-circle text-green-600"></i> Yes</td>
+                                <td class="px-1 py-3 text-center text-xs hidden" id="feat-rech-5"><i
+                                        class="fas fa-check-circle text-green-600"></i> Yes</td>
+                            </tr>
+                            <tr class="border-b" id="row-4d">
+                                <td class="px-2 py-3 font-medium text-gray-900 text-xs">
+                                    4D Sensor Tech <span class="text-[10px] text-gray-400 block font-normal">Motion &
+                                        Intent</span>
+                                </td>
+                                <td class="px-1 py-3 text-center text-xs font-bold text-green-600 bg-gray-50"
+                                    id="feat-4d-1"><i class="fas fa-check-circle"></i> Yes</td>
+                                <td class="px-1 py-3 text-center text-xs text-green-600" id="feat-4d-2"><i
+                                        class="fas fa-check-circle"></i> Yes</td>
+                                <td class="px-1 py-3 text-center text-xs text-gray-400" id="feat-4d-3"><i
+                                        class="fas fa-minus"></i> No</td>
+                                <td class="px-1 py-3 text-center text-xs text-gray-400" id="feat-4d-4"><i
+                                        class="fas fa-minus"></i> No</td>
+                                <td class="px-1 py-3 text-center text-xs text-gray-400 hidden" id="feat-4d-5"><i
+                                        class="fas fa-minus"></i> No</td>
+                            </tr>
+                            <tr class="border-b">
+                                <td class="px-2 py-3 font-medium text-gray-900 text-xs">
+                                    Neural Noise Suppression <span
+                                        class="text-[10px] text-gray-400 block font-normal">Diff / Easy</span>
+                                </td>
+                                <td class="px-1 py-3 text-center text-xs font-bold bg-gray-50" id="feat-nns-1">12 / 6 dB
+                                </td>
+                                <td class="px-1 py-3 text-center text-xs" id="feat-nns-2">10 / 4 dB</td>
+                                <td class="px-1 py-3 text-center text-xs" id="feat-nns-3">8 / 2 dB</td>
+                                <td class="px-1 py-3 text-center text-xs text-gray-500" id="feat-nns-4">6 / 0 dB</td>
+                                <td class="px-1 py-3 text-center text-xs text-gray-500 hidden" id="feat-nns-5">6 / 0 dB
+                                </td>
+                            </tr>
+                            <tr class="border-b">
+                                <td class="px-2 py-3 font-medium text-gray-900 text-xs">
+                                    Spatial Balancer <span
+                                        class="text-[10px] text-gray-400 block font-normal">Focus</span>
+                                </td>
+                                <td class="px-1 py-3 text-center text-xs font-bold bg-gray-50" id="feat-sb-1">100%</td>
+                                <td class="px-1 py-3 text-center text-xs" id="feat-sb-2">60%</td>
+                                <td class="px-1 py-3 text-center text-xs" id="feat-sb-3">60%</td>
+                                <td class="px-1 py-3 text-center text-xs text-gray-500" id="feat-sb-4">40%</td>
+                                <td class="px-1 py-3 text-center text-xs text-gray-500 hidden" id="feat-sb-5">40%</td>
+                            </tr>
+                            <tr class="border-b">
+                                <td class="px-2 py-3 font-medium text-gray-900 text-xs">
+                                    Fitting Bandwidth <span class="text-[10px] text-gray-400 block font-normal">HF
+                                        Access</span>
+                                </td>
+                                <td class="px-1 py-3 text-center text-xs font-bold bg-gray-50" id="feat-fb-1">10 kHz
+                                </td>
+                                <td class="px-1 py-3 text-center text-xs" id="feat-fb-2">8 kHz</td>
+                                <td class="px-1 py-3 text-center text-xs" id="feat-fb-3">8 kHz</td>
+                                <td class="px-1 py-3 text-center text-xs" id="feat-fb-4">8 kHz</td>
+                                <td class="px-1 py-3 text-center text-xs hidden" id="feat-fb-5">8 kHz</td>
+                            </tr>
+                            <tr class="border-b">
+                                <td class="px-2 py-3 font-medium text-gray-900 text-xs">
+                                    SuddenSound Stabilizer <span
+                                        class="text-[10px] text-gray-400 block font-normal">Impact Noise</span>
+                                </td>
+                                <td class="px-1 py-3 text-center text-xs font-bold bg-gray-50" id="feat-sss-1">6 Configs
+                                </td>
+                                <td class="px-1 py-3 text-center text-xs" id="feat-sss-2">5 Configs</td>
+                                <td class="px-1 py-3 text-center text-xs" id="feat-sss-3">4 Configs</td>
+                                <td class="px-1 py-3 text-center text-xs" id="feat-sss-4">2 Configs</td>
+                                <td class="px-1 py-3 text-center text-xs hidden" id="feat-sss-5">2 Configs</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let currentFormFactor = 'RIC';
+        let currentPriceList = 'Insurance';
+        let financeTerm = 24;
+
+        // Data Store for Prices (Updated for 5 columns)
+        let priceData = {
+            'Insurance': { 1: '', 2: '', 3: '', 4: '', 5: '' },
+            'Monthly': { 1: '', 2: '', 3: '', 4: '', 5: '' },
+            'HLVP': { 1: '', 2: '', 3: '', 4: '', 5: '' }
+        };
+
+        // Feature Data Constant
+        const featureData = {
+            'bt': { 1: '<i class="fas fa-check-circle text-green-600"></i> Yes', 2: '<i class="fas fa-check-circle text-green-600"></i> Yes', 3: '<i class="fas fa-check-circle text-green-600"></i> Yes', 4: '<i class="fas fa-check-circle text-green-600"></i> Yes' },
+            'rech': { 1: '<i class="fas fa-check-circle text-green-600"></i> Yes', 2: '<i class="fas fa-check-circle text-green-600"></i> Yes', 3: '<i class="fas fa-check-circle text-green-600"></i> Yes', 4: '<i class="fas fa-check-circle text-green-600"></i> Yes' },
+            '4d': {
+                1: '<i class="fas fa-check-circle"></i> Yes',
+                2: '<i class="fas fa-check-circle"></i> Yes',
+                3: '<i class="fas fa-minus"></i> No',
+                4: '<i class="fas fa-minus"></i> No'
+            },
+            'nns': { 1: '12 / 6 dB', 2: '10 / 4 dB', 3: '8 / 2 dB', 4: '6 / 0 dB' },
+            'sb': { 1: '100%', 2: '60%', 3: '60%', 4: '40%' },
+            'fb': { 1: '10 kHz', 2: '8 kHz', 3: '8 kHz', 4: '8 kHz' },
+            'sss': { 1: '6 Configs', 2: '5 Configs', 3: '4 Configs', 4: '2 Configs' }
+        };
+
+        // Initialize date input to today
+        document.getElementById('patient-date').valueAsDate = new Date();
+
+        function setFinanceTerm(months) {
+            financeTerm = months;
+
+            // Update Toggle Styles
+            const btn24 = document.getElementById('btn-24mo');
+            const btn36 = document.getElementById('btn-36mo');
+
+            if (months === 24) {
+                btn24.className = "px-3 py-1 rounded shadow bg-white text-gray-800 font-bold border border-gray-200 transition-all";
+                btn36.className = "px-3 py-1 rounded text-gray-500 hover:bg-gray-300 transition-all";
+            } else {
+                btn36.className = "px-3 py-1 rounded shadow bg-white text-gray-800 font-bold border border-gray-200 transition-all";
+                btn24.className = "px-3 py-1 rounded text-gray-500 hover:bg-gray-300 transition-all";
+            }
+
+            // Update Label
+            document.getElementById('monthly-label').innerText = `Price/Month (${months}mo):`;
+
+            // Recalculate
+            updateMonthlyPrices();
+        }
+
+        function setPriceList(listName) {
+            currentPriceList = listName;
+
+            // Update UI buttons
+            ['Insurance', 'Monthly', 'HLVP'].forEach(name => {
+                const btn = document.getElementById('btn-' + name.toLowerCase());
+                if (name === listName) {
+                    btn.className = "px-3 py-1 rounded shadow bg-white text-gray-800 font-bold border border-gray-200 transition-all";
+                } else {
+                    btn.className = "px-3 py-1 rounded text-gray-500 hover:bg-gray-300 transition-all";
+                }
+            });
+
+            // Update Input Fields
+            for (let i = 1; i <= 5; i++) {
+                document.getElementById(`price-${i}`).value = priceData[listName][i] || '';
+            }
+            updateMonthlyPrices(); // Recalc monthly on list change
+        }
+
+        function savePrice(level) {
+            const val = document.getElementById(`price-${level}`).value;
+            priceData[currentPriceList][level] = val;
+            updateMonthlyPrices(); // Recalc monthly on input change
+        }
+
+        function updateMonthlyPrices() {
+            for (let i = 1; i <= 5; i++) {
+                const price = parseInt(document.getElementById(`price-${i}`).value) || 0;
+                const monthly = Math.round(price / financeTerm);
+                document.getElementById(`monthly-${i}`).innerText = monthly;
+            }
+        }
+
+        function setFormFactor(type) {
+            currentFormFactor = type;
+            const btnRic = document.getElementById('btn-ric');
+            const btnIte = document.getElementById('btn-ite');
+            const matrixTitle = document.getElementById('matrix-title');
+            const row4d = document.getElementById('row-4d');
+            const motionDesc = document.getElementById('motion-desc');
+
+            // Elements to toggle
+            const col5 = document.getElementById('col-5');
+            const priceCell5 = document.getElementById('price-cell-5');
+            const monthlyCell5 = document.getElementById('monthly-cell-5');
+            const featCells5 = ['feat-bt-5', 'feat-rech-5', 'feat-4d-5', 'feat-nns-5', 'feat-sb-5', 'feat-fb-5', 'feat-sss-5'];
+
+            if (type === 'RIC') {
+                btnRic.className = "flex-1 py-2 px-4 rounded-md bg-white shadow-sm font-bold text-oticon-pink transition-all";
+                btnIte.className = "flex-1 py-2 px-4 rounded-md text-gray-500 font-medium hover:bg-gray-200 transition-all";
+                matrixTitle.innerText = "Technology Matrix (Intent miniRITE R/BTE R)";
+                row4d.classList.remove('opacity-25', 'bg-gray-100'); // Enable 4D row
+                motionDesc.innerText = "Triggers 4D Motion Sensors (Body movement).";
+
+                // HIDE Column 5
+                col5.classList.add('hidden');
+                priceCell5.classList.add('hidden');
+                monthlyCell5.classList.add('hidden');
+                featCells5.forEach(id => document.getElementById(id).classList.add('hidden'));
+
+                // Set Headers
+                setHeaders([
+                    { title: "Intent 1", sub: "Premium" },
+                    { title: "Intent 2", sub: "Advanced" },
+                    { title: "Intent 3", sub: "Standard" },
+                    { title: "Intent 4", sub: "Essential" }
+                ]);
+
+                // Populate Features (Standard Mapping)
+                updateFeatureCells([1, 2, 3, 4]);
+
+            } else {
+                btnIte.className = "flex-1 py-2 px-4 rounded-md bg-white shadow-sm font-bold text-blue-600 transition-all";
+                btnIte.innerText = "CIC/IIC (Zeal/Own SI)"; // Rename Button
+                btnRic.className = "flex-1 py-2 px-4 rounded-md text-gray-500 font-medium hover:bg-gray-200 transition-all";
+                matrixTitle.innerText = "Technology Matrix (Zeal 1 / Own SI)";
+                row4d.classList.add('opacity-25', 'bg-gray-100'); // Dim 4D row
+                motionDesc.innerText = "Zeal 1 / Own SI uses DNN 2.0 but lacks 4D Motion Sensors.";
+
+                // SHOW Column 5
+                col5.classList.remove('hidden');
+                priceCell5.classList.remove('hidden');
+                monthlyCell5.classList.remove('hidden');
+                featCells5.forEach(id => document.getElementById(id).classList.remove('hidden'));
+
+                // Set Headers
+                setHeaders([
+                    { title: "Zeal 1", sub: "Premium" },
+                    { title: "Own SI 1", sub: "Premium" },
+                    { title: "Own SI 2", sub: "Advanced" },
+                    { title: "Own SI 3", sub: "Standard" },
+                    { title: "Own SI 4", sub: "Essential" }
+                ]);
+
+                // Populate Features (Shift Logic: Col 2 is also Level 1)
+                updateFeatureCells([1, 1, 2, 3, 4]);
+            }
+            updateCalculator();
+        }
+
+        function updateFeatureCells(levelMap) {
+            const featureKeys = ['bt', 'rech', '4d', 'nns', 'sb', 'fb', 'sss'];
+            levelMap.forEach((level, index) => {
+                const col = index + 1;
+                featureKeys.forEach(key => {
+                    const cell = document.getElementById(`feat-${key}-${col}`); // e.g. feat-4d-1
+                    if (cell) {
+                        cell.innerHTML = featureData[key][level];
+
+                        // Default Style
+                        cell.className = "px-1 py-3 text-center text-xs";
+
+                        // Logic Changes based on Form Factor
+                        if (currentFormFactor !== 'RIC') {
+                            // Custom Logic
+
+                            // 1. Bluetooth & Rechargeability: Only Col 1 (Zeal) is Yes. Others No.
+                            if (key === 'bt' || key === 'rech') {
+                                if (col === 1) {
+                                    // Zeal 1 -> Yes
+                                    cell.classList.add('font-bold', 'bg-gray-50');
+                                    // Inner HTML is already Yes from Level 1
+                                } else {
+                                    // Own SI -> No
+                                    cell.innerHTML = '<i class="fas fa-minus"></i> No';
+                                    cell.classList.add('text-gray-400');
+                                }
+                            }
+
+                            // 2. 4D Sensor: All No
+                            if (key === '4d') {
+                                cell.innerHTML = '<i class="fas fa-minus"></i> No';
+                                cell.classList.add('text-gray-400');
+                            }
+
+                        } else {
+                            // RIC Logic (Standard)
+                            if (key === '4d') {
+                                if (level <= 2) {
+                                    cell.classList.add('text-green-600');
+                                    if (col === 1) cell.classList.add('font-bold', 'bg-gray-50');
+                                } else {
+                                    cell.classList.add('text-gray-400');
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+        }
+
+        function setHeaders(headers) {
+            headers.forEach((h, index) => {
+                const i = index + 1;
+                document.getElementById(`head-${i}-title`).innerText = h.title;
+                document.getElementById(`head-${i}-sub`).innerText = h.sub;
+            });
+            // Handle 5th header specifically if it exists in the array
+            if (headers.length === 5) {
+                document.getElementById('head-5-title').innerText = headers[4].title;
+                document.getElementById('head-5-sub').innerText = headers[4].sub;
+            }
+        }
+
+        let currentRecTier = 4; // Global tracker
+
+        function updateCalculator() {
+            // Get inputs
+            const complex = parseInt(document.getElementById('input-complex').value);
+            const group = parseInt(document.getElementById('input-group').value);
+            const active = parseInt(document.getElementById('input-active').value);
+            const quiet = parseInt(document.getElementById('input-quiet').value);
+            const tinnitus = parseInt(document.getElementById('input-tinnitus').value);
+
+            // Update UI Labels
+            document.getElementById('val-complex').innerText = complex + (complex === 1 ? ' day/week' : ' days/week');
+            document.getElementById('val-group').innerText = group + (group === 1 ? ' day/week' : ' days/week');
+            document.getElementById('val-active').innerText = active + (active === 1 ? ' day/week' : ' days/week');
+            document.getElementById('val-quiet').innerText = quiet + (quiet === 1 ? ' day/week' : ' days/week');
+            document.getElementById('val-tinnitus').innerText = tinnitus + '/10';
+
+            // Calculate Weighted Score
+            let rawScore = (complex * 15.0) + (group * 10.0) + (active * 5.0) + (quiet * 1.0);
+            let finalScore = Math.min(100, Math.round((rawScore / 130) * 100));
+
+            // Update Score UI
+            document.getElementById('score-bar').style.width = finalScore + '%';
+            document.getElementById('score-display').innerText = finalScore + '/100';
+
+            // Determine Recommendation
+            let recTier = 4; // 1, 2, 3, 4
+            let recColumn = 4; // defaults same as tier
+            let recTitle = "";
+            let recBadge = "";
+            let recText = "";
+            let gapText = "";
+            let gapVisible = false;
+
+            if (finalScore > 75 || tinnitus > 7) {
+                recTier = 1;
+                recBadge = "Premium";
+                recColumn = 1; // Default to Col 1 (Intent 1 or Zeal 1)
+
+                if (currentFormFactor === 'RIC') {
+                    recTitle = "Intent 1";
+                    recText = "Top-tier <strong>Intent 1</strong>.";
+                } else {
+                    recTitle = "Zeal 1";
+                    recText = "<strong>Zeal 1</strong> is the premium Custom choice.";
+                }
+
+                let reasons = [];
+                if (finalScore > 75) reasons.push("High Complexity Lifestyle");
+                if (tinnitus > 7) reasons.push("Severe Tinnitus");
+
+                recText = `Based on <strong>${reasons.join(" & ")}</strong>, Level 1 is required.`;
+                if (currentFormFactor === 'RIC') {
+                    recText += " You get 12dB noise suppression and 4D Sensors.";
+                } else {
+                    recText += " <strong>Zeal 1</strong> offers Bluetooth & Rechargeability + 12dB noise suppression.";
+                }
+                gapVisible = true;
+                gapText = "Dropping levels loses significant noise handling.";
+
+            } else if (finalScore > 50 || tinnitus > 5) {
+                recTier = 2;
+                recBadge = "Advanced";
+                recColumn = currentFormFactor === 'RIC' ? 2 : 3; // Intent 2 (Col 2) OR Own SI 2 (Col 3)
+
+                recTitle = currentFormFactor === 'RIC' ? "Intent 2" : "Own SI 2";
+                recText = "Moderate-High Complexity. Level 2.";
+                gapVisible = true;
+                gapText = "Dropping further reduces clarity.";
+            } else if (finalScore > 25) {
+                recTier = 3;
+                recBadge = "Standard";
+                recColumn = currentFormFactor === 'RIC' ? 3 : 4; // Intent 3 (Col 3) OR Own SI 3 (Col 4)
+
+                recTitle = currentFormFactor === 'RIC' ? "Intent 3" : "Own SI 3";
+                recText = "Moderate Complexity. Level 3.";
+                gapVisible = true;
+                gapText = "Dropping to Essential reduces performance.";
+            } else {
+                recTier = 4;
+                recBadge = "Essential";
+                recColumn = currentFormFactor === 'RIC' ? 4 : 5; // Intent 4 (Col 4) OR Own SI 4 (Col 5)
+
+                recTitle = currentFormFactor === 'RIC' ? "Intent 4" : "Own SI 4";
+                recText = "Low Complexity. Level 4.";
+            }
+
+            currentRecTier = recTier; // Update Global
+
+            // Tinnitus Overlay Logic
+            const tinBox = document.getElementById('tinnitus-box');
+            if (tinnitus > 5) {
+                tinBox.classList.remove('hidden');
+                if (finalScore <= 50) {
+                    recText += "<br><br><em class='text-blue-200'>*Tier upgraded for Tinnitus support.</em>";
+                }
+            } else {
+                tinBox.classList.add('hidden');
+            }
+
+            // Update DOM
+            document.getElementById('rec-title').innerText = recTitle;
+            document.getElementById('rec-badge').innerText = recBadge;
+            document.getElementById('rec-text').innerHTML = recText;
+            document.getElementById('score-desc').innerText = finalScore > 75 ? "Very Complex Needs" : finalScore > 50 ? "Complex Needs" : finalScore > 25 ? "Moderate Needs" : "Simple Needs";
+
+            // Gap Analysis
+            const gapBox = document.getElementById('gap-analysis-box');
+            if (gapVisible) {
+                gapBox.classList.remove('hidden');
+                document.getElementById('gap-text').innerText = gapText;
+            } else {
+                gapBox.classList.add('hidden');
+            }
+
+            // Highlight Table Column & Price Input
+            [1, 2, 3, 4, 5].forEach(n => {
+                const col = document.getElementById(`col-${n}`);
+                const pInput = document.getElementById(`price-${n}`);
+                const mCell = document.getElementById(`monthly-cell-${n}`);
+                const mContainer = document.getElementById(`monthly-container-${n}`);
+
+                // Reset
+                col.classList.remove('bg-pink-100', 'border-oticon-pink', 'bg-blue-100', 'border-blue-500');
+                col.classList.add('bg-gray-100', 'border-transparent');
+
+                pInput.classList.remove('font-bold', 'text-oticon-pink', 'text-blue-600', 'bg-pink-50', 'bg-blue-50', 'border-oticon-pink', 'border-blue-500', 'scale-105');
+                pInput.classList.add('border-gray-200');
+
+                mCell.classList.remove('bg-pink-100', 'border-oticon-pink', 'bg-blue-100', 'border-blue-500');
+                mContainer.classList.remove('text-oticon-pink', 'text-blue-600', 'font-extrabold', 'text-lg');
+            });
+
+            // Highlight active
+            const activeCol = document.getElementById(`col-${recColumn}`);
+            const activePrice = document.getElementById(`price-${recColumn}`);
+            const activeMCell = document.getElementById(`monthly-cell-${recColumn}`);
+            const activeMContainer = document.getElementById(`monthly-container-${recColumn}`);
+
+            activeCol.classList.remove('bg-gray-100', 'border-transparent');
+            activePrice.classList.remove('border-gray-200');
+
+            if (currentFormFactor === 'RIC') {
+                // RIC (Pink)
+                activeCol.classList.add('bg-pink-100', 'border-oticon-pink');
+                activePrice.classList.add('font-bold', 'text-oticon-pink', 'bg-pink-50', 'border-oticon-pink', 'scale-105');
+                activeMCell.classList.add('bg-pink-100', 'border-oticon-pink');
+                activeMContainer.classList.add('text-oticon-pink', 'font-extrabold');
+
+                document.getElementById('rec-box').classList.remove('from-blue-900', 'to-blue-800');
+                document.getElementById('rec-box').classList.add('from-gray-900', 'to-gray-800');
+                document.getElementById('rec-badge').classList.remove('bg-blue-600');
+                document.getElementById('rec-badge').classList.add('bg-oticon-pink');
+            } else {
+                // Custom (Blue)
+                activeCol.classList.add('bg-blue-100', 'border-blue-500');
+                activePrice.classList.add('font-bold', 'text-blue-600', 'bg-blue-50', 'border-blue-500', 'scale-105');
+                activeMCell.classList.add('bg-blue-100', 'border-blue-500');
+                activeMContainer.classList.add('text-blue-600', 'font-extrabold');
+
+                document.getElementById('rec-box').classList.remove('from-gray-900', 'to-gray-800');
+                document.getElementById('rec-box').classList.add('from-blue-900', 'to-blue-800');
+                document.getElementById('rec-badge').classList.remove('bg-oticon-pink');
+                document.getElementById('rec-badge').classList.add('bg-blue-600');
+            }
+
+            populateDropdown();
+            updateComparison();
+        }
+
+        function populateDropdown() {
+            const dropdown = document.getElementById('select-manual-model');
+            const currentVal = dropdown.value;
+            dropdown.innerHTML = '<option value="">Select model...</option>';
+
+            let options = [];
+            if (currentFormFactor === 'RIC') {
+                options = [
+                    { val: 1, text: 'Intent 1 (Premium)' },
+                    { val: 2, text: 'Intent 2 (Advanced)' },
+                    { val: 3, text: 'Intent 3 (Standard)' },
+                    { val: 4, text: 'Intent 4 (Essential)' }
+                ];
+            } else {
+                options = [
+                    { val: 1, text: 'Zeal 1 (Premium)' }, // Column 1
+                    { val: 1.5, text: 'Own SI 1 (Premium)' }, // Column 2 - Use 1.5 to denote Custom Col 2
+                    { val: 2, text: 'Own SI 2 (Advanced)' },
+                    { val: 3, text: 'Own SI 3 (Standard)' },
+                    { val: 4, text: 'Own SI 4 (Essential)' }
+                ];
+            }
+
+            // Filter out the recommended one? No, comparison to self is fine (shows "Same").
+            // Actually, usually you compare to something else. 
+            // Let's just list all.
+
+            options.forEach(opt => {
+                const optEl = document.createElement('option');
+                optEl.value = opt.val;
+                optEl.innerText = opt.text;
+                dropdown.appendChild(optEl);
+            });
+
+            // Try to restore previous selection if it exists in new options
+            // If not, clear it.
+            // Actually, if form factor changes, we should probably reset or try to map.
+            // For simplicity, reset if invalid.
+            const exists = options.find(o => o.val == currentVal);
+            if (exists) dropdown.value = currentVal;
+        }
+
+        function updateComparison() {
+            const dropdown = document.getElementById('select-manual-model');
+            const resultBox = document.getElementById('comparison-result');
+            const placeholder = document.getElementById('comparison-placeholder');
+
+            const manualVal = parseFloat(dropdown.value);
+
+            if (!manualVal) {
+                resultBox.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+                return;
+            }
+
+            // Logic: Compare currentRecTier vs manualVal
+            // recTier is 1, 2, 3, 4.
+            // manualVal is 1, 1.5, 2, 3, 4. (1.5 is Own SI 1)
+
+            // We need to fetch features for Rec and Manual.
+            // Helper to get feature values.
+            const getFeats = (tier, isCustomCol2) => {
+                // Tier 1.5 -> tier=1, isCustomCol2=true
+                const logicalTier = Math.floor(tier);
+                const colIndex = (currentFormFactor === 'RIC')
+                    ? logicalTier
+                    : (tier === 1.5 ? 2 : (tier === 1 ? 1 : tier + 1)); // Zeal(1)->1, OwnSI1(1.5)->2, 2->3...
+
+                // Get raw data for extraction
+                // NNS: "12 / 6 dB" -> 12
+                // Sensor: Yes/No
+                // BW: 10 kHz -> 10
+
+                const nnsStr = featureData['nns'][logicalTier];
+                const bwStr = featureData['fb'][logicalTier];
+                const sensorT = featureData['4d'][logicalTier];
+
+                let nns = parseInt(nnsStr.split('/')[0]) || 0;
+                let bw = parseInt(bwStr.split(' ')[0]) || 0;
+                let sensor = sensorT.includes('Yes');
+                let bt = true;
+
+                if (currentFormFactor !== 'RIC') {
+                    // Custom Logic Overrides
+                    sensor = false; // Always false for Custom
+                    // BT: Only Zeal 1 (Tier 1, Not Col 2) has it.
+                    if (tier === 1 && !isCustomCol2) bt = true;
+                    else bt = false;
+                }
+
+                return { nns, bw, sensor, bt, logicalTier };
+            };
+
+            const recIsCustomCol2 = (currentFormFactor !== 'RIC' && currentRecTier === 1 && false);
+            // NOTE: Recommendation logic currently defaults to Zeal 1 (Col 1) for Tier 1.
+            // So recIsCustomCol2 is always false for recommendation unless we change logic.
+            // "RecColumn = 1" for Zeal 1. 
+
+            const recFeats = getFeats(currentRecTier, false);
+            const manFeats = getFeats(manualVal, manualVal === 1.5);
+
+            // Compare
+            const diffs = [];
+
+            // NNS
+            if (recFeats.nns > manFeats.nns) {
+                diffs.push({ icon: 'fa-arrow-down text-red-500', text: `Loses ${recFeats.nns - manFeats.nns}dB Noise Suppression` });
+            } else if (recFeats.nns < manFeats.nns) {
+                diffs.push({ icon: 'fa-arrow-up text-green-500', text: `Gains ${manFeats.nns - recFeats.nns}dB Noise Suppression` });
+            }
+
+            // Sensor
+            if (recFeats.sensor && !manFeats.sensor) {
+                diffs.push({ icon: 'fa-arrow-down text-red-500', text: `Loses 4D Sensor Tech` });
+            } else if (!recFeats.sensor && manFeats.sensor) {
+                diffs.push({ icon: 'fa-arrow-up text-green-500', text: `Gains 4D Sensor Tech` });
+            }
+
+            // Bluetooth
+            if (recFeats.bt && !manFeats.bt) {
+                diffs.push({ icon: 'fa-arrow-down text-red-500', text: `Loses Bluetooth & Recharge` });
+            } else if (!recFeats.bt && manFeats.bt) {
+                diffs.push({ icon: 'fa-arrow-up text-green-500', text: `Gains Bluetooth & Recharge` });
+            }
+
+            // Bandwidth
+            if (recFeats.bw > manFeats.bw) {
+                diffs.push({ icon: 'fa-arrow-down text-red-500', text: `Reduced Bandwidth (${manFeats.bw}kHz)` });
+            } else if (recFeats.bw < manFeats.bw) {
+                diffs.push({ icon: 'fa-arrow-up text-green-500', text: `Expanded Bandwidth (${manFeats.bw}kHz)` });
+            }
+
+            // Render
+            resultBox.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+
+            const list = document.getElementById('comp-list');
+            list.innerHTML = '';
+
+            if (diffs.length === 0) {
+                list.innerHTML = '<li><i class="fas fa-check text-green-500 mr-2"></i>Identical Feature Performance</li>';
+            } else {
+                diffs.forEach(d => {
+                    list.innerHTML += `<li><i class="fas ${d.icon} mr-2"></i>${d.text}</li>`;
+                });
+            }
+
+            // Title
+            const selText = dropdown.options[dropdown.selectedIndex].text;
+            document.getElementById('comp-title').innerText = "Vs. " + selText.split(' (')[0];
+
+            const badge = document.getElementById('comp-badge');
+            if (recFeats.logicalTier < Math.floor(manualVal)) { // Lower tier number = Better. So Rec < Manual means Rec is Better. Manual is Downgrade.
+                badge.className = "px-2 py-0.5 rounded text-xs font-bold bg-yellow-100 text-yellow-800";
+                badge.innerText = "Downgrade";
+            } else if (recFeats.logicalTier > Math.floor(manualVal)) {
+                badge.className = "px-2 py-0.5 rounded text-xs font-bold bg-green-100 text-green-800";
+                badge.innerText = "Upgrade";
+            } else {
+                if (currentFormFactor !== 'RIC' && manualVal === 1.5 && currentRecTier === 1) {
+                    // Compariong Zeal 1 (Rec) vs Own SI 1 (Manual)
+                    badge.className = "px-2 py-0.5 rounded text-xs font-bold bg-yellow-100 text-yellow-800";
+                    badge.innerText = "Hardware Downgrade";
+                } else {
+                    badge.className = "px-2 py-0.5 rounded text-xs font-bold bg-gray-100 text-gray-800";
+                    badge.innerText = "Similar Tier";
+                }
+            }
+        }
+        script     // File Save Function
+        function saveToFile() {
+            const data = {
+                patientName: document.getElementById('patient-name').value,
+                date: document.getElementById('patient-date').value,
+                notes: document.getElementById('patient-notes').value, // Save notes
+                formFactor: currentFormFactor,
+                priceList: currentPriceList,
+                prices: priceData,
+                tinnitusSeverity: document.getElementById('input-tinnitus').value,
+                lifestyle: {
+                    complex: document.getElementById('input-complex').value,
+                    group: document.getElementById('input-group').value,
+                    active: document.getElementById('input-active').value,
+                    quiet: document.getElementById('input-quiet').value
+                }
+            };
+
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Oticon_Rec_${data.patientName || 'Patient'}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // File Load Function
+        function loadFromFile(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+
+                    // Restore Basic Fields
+                    document.getElementById('patient-name').value = data.patientName || '';
+                    document.getElementById('patient-date').value = data.date || new Date().toISOString().split('T')[0];
+                    document.getElementById('patient-notes').value = data.notes || ''; // Restore notes
+
+                    // Restore Tinnitus
+                    document.getElementById('input-tinnitus').value = data.tinnitusSeverity || 0;
+
+                    // Restore Lifestyle
+                    if (data.lifestyle) {
+                        document.getElementById('input-complex').value = data.lifestyle.complex || 0;
+                        document.getElementById('input-group').value = data.lifestyle.group || 0;
+                        document.getElementById('input-active').value = data.lifestyle.active || 0;
+                        document.getElementById('input-quiet').value = data.lifestyle.quiet || 0;
+                    }
+
+                    // Restore Prices
+                    if (data.prices) {
+                        // Deep copy to avoid reference issues
+                        Object.assign(priceData, data.prices);
+                    }
+
+                    // Restore Form Factor & Price List
+                    setFormFactor(data.formFactor || 'RIC');
+                    setPriceList(data.priceList || 'Insurance');
+
+                    // Trigger update
+                    updateCalculator();
+
+                } catch (err) {
+                    alert("Error reading file: " + err.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Initialize
+        updateCalculator();
+
+        function exportToPDF() {
+            // 1. Populate Data
+            const name = document.getElementById('patient-name').value || "Unknown Patient";
+            const dateVal = document.getElementById('patient-date').value;
+            const date = dateVal ? new Date(dateVal).toLocaleDateString() : new Date().toLocaleDateString();
+            const notes = document.getElementById('patient-notes').value || "No notes entered.";
+
+            document.getElementById('print-name').innerText = name;
+            document.getElementById('print-date').innerText = date;
+            document.getElementById('print-notes').innerText = notes;
+
+            // 2. Recommendation Data
+            const recTitle = document.getElementById('rec-title').innerText;
+            const recTier = document.getElementById('rec-badge').innerText;
+            const recText = document.getElementById('rec-text').innerText; // Strip HTML for print safety
+
+            // Get Price (need to find active column price)
+            let activePrice = "$0.00";
+            // Check which column is active
+            for (let i = 1; i <= 5; i++) {
+                const col = document.getElementById(`col-${i}`);
+                if (col.classList.contains('bg-pink-100') || col.classList.contains('bg-blue-100')) {
+                    const priceVal = document.getElementById(`price-${i}`).value;
+                    if (priceVal) activePrice = "$" + parseFloat(priceVal).toLocaleString();
+                    else activePrice = "Price not set";
+                    break;
+                }
+            }
+
+            document.getElementById('print-rec-model').innerText = recTitle;
+            document.getElementById('print-rec-tier').innerText = recTier;
+            document.getElementById('print-rec-price').innerText = activePrice.includes('$') ? activePrice + " / pair" : activePrice;
+            document.getElementById('print-rec-reason').innerHTML = document.getElementById('rec-text').innerHTML; // Preserve bolding
+
+            // 3. Comparison Data
+            const dropdown = document.getElementById('select-manual-model');
+            const compBox = document.getElementById('print-comparison-box');
+
+            if (dropdown.value && dropdown.selectedIndex > 0) {
+                compBox.classList.remove('hidden');
+                const selText = dropdown.options[dropdown.selectedIndex].text;
+                document.getElementById('print-comp-model').innerText = selText;
+
+                // Calculate Manual Price
+                const manualVal = parseFloat(dropdown.value);
+                let colIdx = 0;
+                if (currentFormFactor === 'RIC') colIdx = Math.floor(manualVal);
+                else {
+                    if (manualVal === 1) colIdx = 1;
+                    else if (manualVal === 1.5) colIdx = 2;
+                    else colIdx = manualVal + 1; // 2->3, 3->4, 4->5
+                }
+
+                const manPriceVal = document.getElementById(`price-${colIdx}`).value;
+                const manPrice = manPriceVal ? "$" + parseFloat(manPriceVal).toLocaleString() + " / pair" : "Price not set";
+                document.getElementById('print-comp-price').innerText = manPrice;
+
+                // Copy Badge & List
+                const uiBadge = document.getElementById('comp-badge');
+                if (uiBadge) {
+                    const printBadge = document.getElementById('print-comp-badge');
+                    printBadge.className = uiBadge.className.replace('text-xs', 'text-sm').replace('py-0.5', 'py-1');
+                    printBadge.classList.add('rounded-lg');
+                    printBadge.innerText = uiBadge.innerText;
+                }
+
+                const uiList = document.getElementById('comp-list');
+                if (uiList) {
+                    document.getElementById('print-comp-list').innerHTML = uiList.innerHTML;
+                }
+
+            } else {
+                compBox.classList.add('hidden');
+            }
+
+            // 4. Print
+            window.print();
+        }
+    </script>
+
+    <!-- Hidden Print Layout -->
+    <div id="print-area" class="hidden">
+        <div class="max-w-4xl mx-auto">
+            <!-- Header -->
+            <div class="flex justify-between items-center border-b pb-6 mb-6">
+                <div class="flex items-center gap-3">
+                    <div
+                        class="w-12 h-12 bg-oticon-pink rounded-full flex items-center justify-center text-white font-bold text-2xl">
+                        O</div>
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-800">Clinical Report</h1>
+                        <p class="text-gray-500 text-sm">Oticon Intent™ & Own SI Recommendation</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm text-gray-500">Report Date</p>
+                    <p class="font-bold text-lg" id="print-date">2023-10-24</p>
+                </div>
+            </div>
+
+            <!-- Patient Info -->
+            <div class="bg-gray-50 p-6 rounded-xl mb-8 border border-gray-100">
+                <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Patient Details</h3>
+                <div class="grid grid-cols-2 gap-8">
+                    <div>
+                        <p class="text-xs text-gray-400">Patient Name</p>
+                        <p class="text-xl font-bold text-gray-800" id="print-name">--</p>
+                    </div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                    <p class="text-xs text-gray-400 mb-1">Clinical Notes</p>
+                    <p class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed" id="print-notes">No notes
+                        entered.</p>
+                </div>
+            </div>
+
+            <!-- Recommendation -->
+            <div class="bg-gray-900 text-white p-8 rounded-xl shadow-sm mb-8 relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-6 opacity-10"><i class="fas fa-medal text-9xl"></i></div>
+                <h3 class="text-gray-400 text-sm font-bold uppercase tracking-wider mb-2">Primary Recommendation</h3>
+                <h2 class="text-4xl font-bold mb-2 text-white" id="print-rec-model">Oticon Intent 1</h2>
+                <div class="flex items-baseline gap-2 mb-6">
+                    <span class="px-3 py-1 bg-oticon-pink rounded-full text-xs font-bold text-white uppercase"
+                        id="print-rec-tier">Premium</span>
+                    <span class="text-2xl font-light text-gray-300" id="print-rec-price">$0.00 / pair</span>
+                </div>
+                <p class="text-gray-300 text-lg leading-relaxed max-w-2xl" id="print-rec-reason">Recommendation text...
+                </p>
+            </div>
+
+            <!-- Comparison (If Selected) -->
+            <div id="print-comparison-box" class="hidden bg-white border-2 border-gray-200 p-8 rounded-xl mb-8">
+                <h3 class="text-gray-500 text-sm font-bold uppercase tracking-wider mb-4">Comparison Model</h3>
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800" id="print-comp-model">Oticon Intent 3</h2>
+                        <span class="text-gray-500" id="print-comp-price">$0.00 / pair</span>
+                    </div>
+                    <div id="print-comp-badge"
+                        class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-lg text-sm font-bold">Downgrade</div>
+                </div>
+
+                <div class="bg-gray-50 rounded-lg p-5">
+                    <h4 class="font-bold text-sm text-gray-700 mb-3">Key Differences</h4>
+                    <ul class="space-y-3" id="print-comp-list">
+                        <!-- Items -->
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="text-center text-xs text-gray-400 mt-12 border-t pt-8">
+                <p>Generated by Oticon Clinical Comparator</p>
+                <p class="mt-1">CONFIDENTIAL - FOR CLINICAL USE ONLY</p>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,49 @@
+{
+  "name": "oticon-intent-comparator",
+  "version": "1.2.0",
+  "description": "Oticon Intent Clinical Comparator Tool",
+  "main": "main.js",
+  "homepage": "https://www.oticon.com",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:linux": "electron-builder --linux deb",
+    "dist:win": "electron-builder --win nsis",
+    "dist:all": "electron-builder --linux deb --win nsis"
+  },
+  "author": "Oticon Clinician <mksv@hearinglife.com>",
+  "license": "MIT",
+  "build": {
+    "appId": "com.oticon.comparator",
+    "productName": "Oticon-Comparator",
+    "executableName": "Oticon-Comparator",
+    "files": [
+      "index.html",
+      "main.js"
+    ],
+    "linux": {
+      "target": [
+        "deb"
+      ],
+      "category": "Office",
+      "maintainer": "Oticon Clinician <mksv@hearinglife.com>",
+      "executableName": "Oticon-Comparator",
+      "icon": "build/icon.png",
+      "synopsis": "Clinical Comparator for Oticon Intent Hearing Aids"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico",
+      "executableName": "Oticon-Comparator"
+    },
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    }
+  },
+  "devDependencies": {
+    "electron": "^29.0.0",
+    "electron-builder": "^24.13.3"
+  }
+}
