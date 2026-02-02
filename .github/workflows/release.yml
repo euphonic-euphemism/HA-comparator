@@ -33,14 +33,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           npm install dmg-license --no-save
-          npm run dist
+          npm run dist -- -p never
         if: matrix.os == 'macos-latest'
       
       - name: Build Desktop App (Windows/Linux)
         if: matrix.os != 'macos-latest'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run dist
+        run: npm run dist -- -p never
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
