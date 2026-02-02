@@ -32,6 +32,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          npm install dmg-license --no-save
           npm run dist
         if: matrix.os == 'macos-latest'
       
