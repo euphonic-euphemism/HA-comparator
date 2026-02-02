@@ -1,6 +1,6 @@
 {
   "name": "oticon-intent-comparator",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Oticon Intent Clinical Comparator Tool",
   "main": "main.js",
   "homepage": "https://www.oticon.com",
