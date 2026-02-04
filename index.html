@@ -110,7 +110,7 @@
                     O</div>
                 <h1 class="text-2xl font-bold text-gray-800">Oticon Clinical Comparator <span
                         class="font-light text-gray-500">Intent & Own SI</span> <span
-                        class="text-xs text-gray-400 ml-2 align-top">v1.2.6</span></h1>
+                        class="text-xs text-gray-400 ml-2 align-top">v1.2.7</span></h1>
             </div>
 
             <!-- Button Container -->
@@ -193,6 +193,17 @@
                         class="w-full h-2 bg-blue-100 rounded-lg appearance-none cursor-pointer slider-thumb"
                         style="accent-color: #3b82f6;" id="input-tinnitus" oninput="updateCalculator()">
                     <p class="text-xs text-gray-400 mt-1">Scores > 5 trigger Tinnitus SoundSupport™ recommendations.</p>
+                </div>
+
+                <!-- Custom: Dexterity / Rechargeable Checkbox (Hidden by default) -->
+                <div id="dexterity-box" class="hidden mt-4 bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" id="input-dexterity" onchange="updateCalculator()"
+                            class="w-5 h-5 text-oticon-pink rounded focus:ring-oticon-pink border-gray-300">
+                        <span class="text-sm font-bold text-gray-700">Prefers Rechargeable / Dexterity Issues?</span>
+                    </label>
+                    <p class="text-xs text-gray-500 mt-1 ml-8">Checking this prioritizes Zeal (Rechargeable) over Own
+                        SI.</p>
                 </div>
             </div>
 
@@ -360,6 +371,22 @@
                                 Promo</button>
                             <button onclick="setPriceList('HLVP')" id="btn-hlvp"
                                 class="px-3 py-1 rounded text-gray-500 hover:bg-gray-300 transition-all">HLVP</button>
+                        </div>
+
+                        <!-- Export/Import Buttons -->
+                        <div class="flex bg-gray-200 p-1 rounded-lg text-xs font-semibold ml-4">
+                            <button onclick="exportPricing()"
+                                class="px-3 py-1 rounded text-gray-700 hover:bg-white hover:shadow transition-all"
+                                title="Export Pricing to JSON">
+                                <i class="fas fa-file-export mr-1"></i> Export
+                            </button>
+                            <button onclick="importPricing()"
+                                class="px-3 py-1 rounded text-gray-700 hover:bg-white hover:shadow transition-all"
+                                title="Import Pricing from JSON">
+                                <i class="fas fa-file-import mr-1"></i> Import
+                            </button>
+                            <input type="file" id="import-price-input" accept=".json" class="hidden"
+                                onchange="handlePriceImport(this)" />
                         </div>
 
                         <!-- Financing Term Toggle -->
@@ -689,6 +716,7 @@
             const matrixTitle = document.getElementById('matrix-title');
             const row4d = document.getElementById('row-4d');
             const motionDesc = document.getElementById('motion-desc');
+            const dexterityBox = document.getElementById('dexterity-box');
 
             // Elements to toggle
             const col5 = document.getElementById('col-5');
@@ -702,6 +730,7 @@
                 matrixTitle.innerText = "Technology Matrix (Intent miniRITE R/BTE R)";
                 row4d.classList.remove('opacity-25', 'bg-gray-100'); // Enable 4D row
                 motionDesc.innerText = "Triggers 4D Motion Sensors (Body movement).";
+                dexterityBox.classList.add('hidden'); // Hide Dexterity
 
                 // HIDE Column 5
                 col5.classList.add('hidden');
@@ -727,6 +756,7 @@
                 matrixTitle.innerText = "Technology Matrix (Zeal 1 / Own SI)";
                 row4d.classList.add('opacity-25', 'bg-gray-100'); // Dim 4D row
                 motionDesc.innerText = "Zeal 1 / Own SI uses DNN 2.0 but lacks 4D Motion Sensors.";
+                dexterityBox.classList.remove('hidden'); // Show Dexterity Checkbox
 
                 // SHOW Column 5
                 col5.classList.remove('hidden');
@@ -823,6 +853,7 @@
             const active = parseInt(document.getElementById('input-active').value);
             const quiet = parseInt(document.getElementById('input-quiet').value);
             const tinnitus = parseInt(document.getElementById('input-tinnitus').value);
+            const dexterity = document.getElementById('input-dexterity').checked;
 
             // Update UI Labels
             document.getElementById('val-complex').innerText = complex + (complex === 1 ? ' day/week' : ' days/week');
@@ -848,7 +879,7 @@
             let gapText = "";
             let gapVisible = false;
 
-            if (finalScore > 75 || tinnitus > 7) {
+            if (finalScore > 75 || tinnitus > 7 || (currentFormFactor === 'ITE' && dexterity === true)) {
                 recTier = 1;
                 recBadge = "Premium";
                 recColumn = 1; // Default to Col 1 (Intent 1 or Zeal 1)
@@ -857,20 +888,34 @@
                     recTitle = "Intent 1";
                     recText = "Top-tier <strong>Intent 1</strong>.";
                 } else {
-                    recTitle = "Zeal 1";
-                    recText = "<strong>Zeal 1</strong> is the premium Custom choice.";
+                    // CUSTOM LOGIC: ZEAL vs OWN SI
+                    if (dexterity) {
+                        recTitle = "Zeal 1";
+                        recColumn = 1; // Zeal 1
+                        recText = "<strong>Zeal 1</strong> is recommended due to rechargeable preference/dexterity needs.";
+                    } else {
+                        recTitle = "Own SI 1";
+                        recColumn = 2; // Own SI 1
+                        recText = "<strong>Own SI 1</strong> is the premium Custom choice.";
+                    }
                 }
 
                 let reasons = [];
                 if (finalScore > 75) reasons.push("High Complexity Lifestyle");
                 if (tinnitus > 7) reasons.push("Severe Tinnitus");
+                if (currentFormFactor === 'ITE' && dexterity) reasons.push("Dexterity/Rechargeable Needs");
 
                 recText = `Based on <strong>${reasons.join(" & ")}</strong>, Level 1 is required.`;
                 if (currentFormFactor === 'RIC') {
                     recText += " You get 12dB noise suppression and 4D Sensors.";
                 } else {
-                    recText += " <strong>Zeal 1</strong> offers Bluetooth & Rechargeability + 12dB noise suppression.";
+                    if (dexterity) {
+                        recText += " <strong>Zeal 1</strong> offers Bluetooth & Rechargeability.";
+                    } else {
+                        recText += " <strong>Own SI 1</strong> offers discrete size with Level 1 performance.";
+                    }
                 }
+
                 gapVisible = true;
                 gapText = "Dropping levels loses significant noise handling.";
 
@@ -977,6 +1022,7 @@
                 document.getElementById('rec-box').classList.remove('from-gray-900', 'to-gray-800');
                 document.getElementById('rec-box').classList.add('from-blue-900', 'to-blue-800');
                 document.getElementById('rec-badge').classList.remove('bg-oticon-pink');
+                document.getElementById('rec-badge').classList.add('bg-blue-600');
                 document.getElementById('rec-badge').classList.add('bg-blue-600');
             }
 
@@ -1306,6 +1352,52 @@
 
             // 4. Print
             window.print();
+        }
+
+        // Export/Import Logic
+        function exportPricing() {
+            const dataStr = JSON.stringify(priceData, null, 2);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pricing-export-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function importPricing() {
+            document.getElementById('import-price-input').click();
+        }
+
+        function handlePriceImport(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+
+                    // Basic Validation
+                    if (importedData && importedData.RIC && importedData.ITE) {
+                        priceData = importedData;
+                        refreshPriceInputs();
+                        alert("Pricing imported successfully!");
+                    } else {
+                        alert("Invalid pricing file format.");
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert("Error parsing pricing file.");
+                }
+                // Reset input
+                input.value = '';
+            };
+            reader.readAsText(file);
         }
     </script>
 
