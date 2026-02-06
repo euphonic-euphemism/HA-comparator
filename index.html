@@ -110,7 +110,7 @@
                     O</div>
                 <h1 class="text-2xl font-bold text-gray-800">Oticon Clinical Comparator <span
                         class="font-light text-gray-500">Intent & Own SI</span> <span
-                        class="text-xs text-gray-400 ml-2 align-top">v1.2.7</span></h1>
+                        class="text-xs text-gray-400 ml-2 align-top">v1.2.8</span></h1>
             </div>
 
             <!-- Button Container -->
@@ -193,6 +193,18 @@
                         class="w-full h-2 bg-blue-100 rounded-lg appearance-none cursor-pointer slider-thumb"
                         style="accent-color: #3b82f6;" id="input-tinnitus" oninput="updateCalculator()">
                     <p class="text-xs text-gray-400 mt-1">Scores > 5 trigger Tinnitus SoundSupport™ recommendations.</p>
+                </div>
+
+                <!-- ACT Score Input -->
+                <div class="mt-4 p-3 bg-purple-50 rounded-lg border border-purple-100">
+                    <div class="flex justify-between mb-1">
+                        <label class="font-semibold flex items-center gap-2"><i
+                                class="fas fa-chart-line text-purple-600"></i> ACT™ Score (nCL)</label>
+                    </div>
+                    <input type="number" id="input-act" min="-4" max="16" step="0.1" placeholder="Enter nCL (-4 to 16)"
+                        class="w-full p-2 border rounded text-sm focus:ring-purple-500 focus:border-purple-500 outline-none"
+                        oninput="updateCalculator()">
+                    <p class="text-xs text-purple-400 mt-1">Audible Contrast Threshold (-4 to 16 nCL)</p>
                 </div>
 
                 <!-- Custom: Dexterity / Rechargeable Checkbox (Hidden by default) -->
@@ -854,6 +866,7 @@
             const quiet = parseInt(document.getElementById('input-quiet').value);
             const tinnitus = parseInt(document.getElementById('input-tinnitus').value);
             const dexterity = document.getElementById('input-dexterity').checked;
+            const actScore = parseFloat(document.getElementById('input-act').value);
 
             // Update UI Labels
             document.getElementById('val-complex').innerText = complex + (complex === 1 ? ' day/week' : ' days/week');
@@ -879,7 +892,7 @@
             let gapText = "";
             let gapVisible = false;
 
-            if (finalScore > 75 || tinnitus > 7 || (currentFormFactor === 'ITE' && dexterity === true)) {
+            if (finalScore > 75 || tinnitus > 7 || (currentFormFactor === 'ITE' && dexterity === true) || (!isNaN(actScore) && actScore >= 10)) {
                 recTier = 1;
                 recBadge = "Premium";
                 recColumn = 1; // Default to Col 1 (Intent 1 or Zeal 1)
@@ -904,6 +917,7 @@
                 if (finalScore > 75) reasons.push("High Complexity Lifestyle");
                 if (tinnitus > 7) reasons.push("Severe Tinnitus");
                 if (currentFormFactor === 'ITE' && dexterity) reasons.push("Dexterity/Rechargeable Needs");
+                if (!isNaN(actScore) && actScore >= 10) reasons.push(`Severe Loss of Contrast (ACT ${actScore})`);
 
                 recText = `Based on <strong>${reasons.join(" & ")}</strong>, Level 1 is required.`;
                 if (currentFormFactor === 'RIC') {
@@ -919,22 +933,33 @@
                 gapVisible = true;
                 gapText = "Dropping levels loses significant noise handling.";
 
-            } else if (finalScore > 50 || tinnitus > 5) {
+            } else if (finalScore > 50 || tinnitus > 5 || (!isNaN(actScore) && actScore >= 7)) {
                 recTier = 2;
                 recBadge = "Advanced";
                 recColumn = currentFormFactor === 'RIC' ? 2 : 3; // Intent 2 (Col 2) OR Own SI 2 (Col 3)
 
                 recTitle = currentFormFactor === 'RIC' ? "Intent 2" : "Own SI 2";
-                recText = "Moderate-High Complexity. Level 2.";
+
+                let reasons = [];
+                if (finalScore > 50) reasons.push("Complex Lifestyle");
+                if (tinnitus > 5) reasons.push("Tinnitus");
+                if (!isNaN(actScore) && actScore >= 7) reasons.push(`Moderate Loss of Contrast (ACT ${actScore})`);
+
+                recText = `Based on <strong>${reasons.length > 0 ? reasons.join(" & ") : "Needs"}</strong>, Level 2 is recommended.`;
                 gapVisible = true;
                 gapText = "Dropping further reduces clarity.";
-            } else if (finalScore > 25) {
+            } else if (finalScore > 25 || (!isNaN(actScore) && actScore >= 4)) {
                 recTier = 3;
                 recBadge = "Standard";
                 recColumn = currentFormFactor === 'RIC' ? 3 : 4; // Intent 3 (Col 3) OR Own SI 3 (Col 4)
 
                 recTitle = currentFormFactor === 'RIC' ? "Intent 3" : "Own SI 3";
-                recText = "Moderate Complexity. Level 3.";
+
+                let reasons = [];
+                if (finalScore > 25) reasons.push("Moderate Lifestyle");
+                if (!isNaN(actScore) && actScore >= 4) reasons.push(`Mild Loss of Contrast (ACT ${actScore})`);
+
+                recText = `Based on <strong>${reasons.length > 0 ? reasons.join(" & ") : "Needs"}</strong>, Level 3 is recommended.`;
                 gapVisible = true;
                 gapText = "Dropping to Essential reduces performance.";
             } else {
@@ -943,7 +968,11 @@
                 recColumn = currentFormFactor === 'RIC' ? 4 : 5; // Intent 4 (Col 4) OR Own SI 4 (Col 5)
 
                 recTitle = currentFormFactor === 'RIC' ? "Intent 4" : "Own SI 4";
-                recText = "Low Complexity. Level 4.";
+
+                let reasons = [];
+                if (!isNaN(actScore)) reasons.push(`Normal Contrast (ACT ${actScore})`);
+
+                recText = `Low Complexity${reasons.length > 0 ? " & " + reasons[0] : ""}. Level 4.`;
             }
 
             currentRecTier = recTier; // Update Global
@@ -1214,7 +1243,8 @@
                     group: document.getElementById('input-group').value,
                     active: document.getElementById('input-active').value,
                     quiet: document.getElementById('input-quiet').value
-                }
+                },
+                actScore: document.getElementById('input-act').value
             };
 
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -1252,7 +1282,8 @@
                         document.getElementById('input-quiet').value = data.lifestyle.quiet || 0;
                     }
 
-                    // Restore Prices
+                    // Restore ACT
+                    document.getElementById('input-act').value = data.actScore || '';
                     if (data.prices) {
                         // Deep copy to avoid reference issues
                         Object.assign(priceData, data.prices);
@@ -1285,6 +1316,9 @@
             document.getElementById('print-name').innerText = name;
             document.getElementById('print-date').innerText = date;
             document.getElementById('print-notes').innerText = notes;
+
+            const actVal = document.getElementById('input-act').value;
+            document.getElementById('print-act').innerText = actVal ? actVal + " nCL" : "Not Tested";
 
             // 2. Recommendation Data
             const recTitle = document.getElementById('rec-title').innerText;
@@ -1428,6 +1462,10 @@
                     <div>
                         <p class="text-xs text-gray-400">Patient Name</p>
                         <p class="text-xl font-bold text-gray-800" id="print-name">--</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-400">ACT™ Score</p>
+                        <p class="text-xl font-bold text-purple-600" id="print-act">--</p>
                     </div>
                 </div>
                 <div class="mt-4 pt-4 border-t border-gray-200">
